@@ -142,16 +142,26 @@ class SAM2ImagePredictor:
           with pixel values in [0, 255].
         """
         self.reset_predictor()
-        assert isinstance(image_list, list)
-        self._orig_hw = []
-        for image in image_list:
-            assert isinstance(
-                image, np.ndarray
-            ), "Images are expected to be an np.ndarray in RGB format, and of shape  HWC"
-            self._orig_hw.append(image.shape[:2])
-        # Transform the image to the form expected by the model
-        img_batch = self._transforms.forward_batch(image_list)
-        img_batch = img_batch.to(self.device)
+        if isinstance(image_list, list):
+            self._orig_hw = []
+            for image in image_list:
+                assert isinstance(
+                    image, np.ndarray
+                ), "Images are expected to be an np.ndarray in RGB format, and of shape  HWC"
+                self._orig_hw.append(image.shape[:2])
+            # Transform the image to the form expected by the model
+            img_batch = self._transforms.forward_batch(image_list)
+            img_batch = img_batch.to(self.device)
+        elif isinstance(image_list, torch.Tensor):
+            # img_batch = image_list
+            self._orig_hw = []
+            img_batch = self._transforms.transforms(image_list)
+            for img in img_batch:
+                self._orig_hw.append(img.shape[-2:])
+            #img_batch = [self.transforms(self.to_tensor(img)) for img in img_list]
+            #img_batch = torch.stack(img_batch, dim=0)
+        else:
+            raise NotImplementedError("Image format not supported")
         batch_size = img_batch.shape[0]
         assert (
             len(img_batch.shape) == 4 and img_batch.shape[1] == 3
